@@ -3,7 +3,6 @@ from speech_to_text import STT
 from assistant_nlu import Assistant
 from converstaion_manager import ConversationManager
 
-# TODO: Conversation manager
 DEBUG = True
 
 stt = STT()
