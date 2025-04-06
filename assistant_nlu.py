@@ -29,13 +29,15 @@ class Assistant:
             1. "intent": the most appropriate intent category
             2. "confidence": your confidence score (0-1)
             3. "extracted_info": a dictionary with any relevant information extracted from the input, with keys including:
-               - "name": user's name if mentioned
-               - "dietary": dietary preferences/restrictions if mentioned
-               - "cuisine": cuisine preference if mentioned
-               - "time": booking time/date if mentioned
-               - "guest_count": number of guests if mentioned
+               - "name": user's first name 
+               - "dietary_preferences": dietary preferences/restrictions if mentioned or None
+               - "culinary_preferences": cuisine preference if mentioned or None
+               - "party_size": number of guests if mentioned - always a positive number
+               - "booking_date_time": booking time/date if mentioned
+               - "booking_location": preferred area of the restaurant
                
                Include empty string values for fields not mentioned in the input.
+               
             JSON Response:
             """
 
@@ -64,24 +66,38 @@ class Assistant:
         User input: "{query}"
         
         Respond with a JSON object containing:
-        - "entity" - recognized entity
-        - "type" - type of entity
-        - "confidence" - your confidence score (0-1)
+        - "entities": a list of objects, where each object contains:
+            - "entity" - recognized entity
+            - "type" - type of entity
+            - "confidence" - your confidence score (0-1)
         
-        Return only entities with a confidence over 0.95
+        Return only entities with a confidence over 0.85
         JSON Response:
         """
 
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
+            )
 
-        response_clean = json.loads(response.choices[0].message.content)
-        entities = response_clean['entities']
+            response_clean = json.loads(response.choices[0].message.content)
 
-        return entities
+            # Check if 'entities' key exists in the response
+            if 'entities' in response_clean:
+                return response_clean['entities']
+            else:
+                # If the model didn't wrap entities in an 'entities' list,
+                # it might have returned them directly as a list
+                print("Warning: 'entities' key not found in response. Return empty list.")
+                print(f"Response received: {response_clean}")
+                return []
+
+        except Exception as e:
+            print(f"Error in entity recognition: {str(e)}")
+            # Return empty list on error to avoid breaking conversation flow
+            return []
 
     def generate_response(self, intent, intents_list):
         """
