@@ -34,6 +34,12 @@ get_date_time:
     - "What day and time are you planning to dine?"
     - "When are you looking to book your table? Please specify the date and preferred time."
 
+get_location:
+  responses:
+    - "Do you have a preferred area or neighborhood for the restaurant?"
+    - "Is there a specific location that would be convenient for you?"
+    - "Where would you like the restaurant to be located? Downtown, uptown, or a specific neighborhood?"
+
 past_bookings_inquiry:
   responses:
     - "Have you visited any restaurants recently that you particularly enjoyed?"
@@ -57,24 +63,6 @@ booking_confirmation:
     - "Great! I've booked a table for {party_size} at {restaurant_name} on {date_time}. You'll receive a confirmation shortly. Is there anything else you need?"
     - "Your reservation is confirmed! {party_size} people at {restaurant_name}, {date_time}. A confirmation has been sent. Can I help with anything else?"
     - "All set! Your table for {party_size} is booked at {restaurant_name} for {date_time}. Enjoy your meal! Is there anything else I can assist with?"
-
-location_inquiry:
-  responses:
-    - "Do you have a preferred area or neighborhood for the restaurant?"
-    - "Is there a specific location that would be convenient for you?"
-    - "Where would you like the restaurant to be located? Downtown, uptown, or a specific neighborhood?"
-
-price_range_inquiry:
-  responses:
-    - "What price range are you comfortable with for this meal? Budget-friendly, mid-range, or high-end?"
-    - "Could you indicate your preferred price point? Economy, moderate, or premium?"
-    - "Are you looking for an affordable option, something mid-range, or a fine dining experience?"
-
-parking_inquiry:
-  responses:
-    - "Do you need a restaurant with parking facilities?"
-    - "Is having available parking important for your restaurant choice?"
-    - "Would you prefer a restaurant that offers on-site parking?"
 
 fallback:
   responses:
