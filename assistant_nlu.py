@@ -49,12 +49,39 @@ class Assistant:
 
         return response_clean['intent'], response_clean['extracted_info']
 
-    def recognize_entity(self, query:str):
+    def recognize_entity(self, query:str) -> list :
         """
         Function for recognizing named entities from user's input
         :param query: Transcript from audio
-        :return:
+        :return: Entity, entity's type
         """
+
+        prompt = f"""
+        You are an entity recognition system for a restaurant booking voice assistant.
+        Based on the provided input, your goal is to identify all named entities.
+        The entities you need to look for are: name, city, city area, restaurant name
+        
+        User input: "{query}"
+        
+        Respond with a JSON object containing:
+        - "entity" - recognized entity
+        - "type" - type of entity
+        - "confidence" - your confidence score (0-1)
+        
+        Return only entities with a confidence over 0.95
+        JSON Response:
+        """
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+
+        response_clean = json.loads(response.choices[0].message.content)
+        entities = response_clean['entities']
+
+        return entities
 
     def generate_response(self, intent, intents_list):
         """
