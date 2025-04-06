@@ -44,92 +44,64 @@ def main():
     if not DEBUG:
         tts.generate_audio(greetings_response)
 
-
     conversation_active = True
 
+    # MAIN dialog loop
     while conversation_active:
-        # MAIN DIALOG LOOP
-        # User initial input
-        if DEBUG:
-            # user_query = 'I want to make a booking for 4 people today in Warsaw center.'
-            user_query = input('User: ')
-            # print(f'USER: {user_query}')
-        else:
-            print('Listening')
-            user_query = stt.record_audio()
-            print(f'USER: {user_query}')
-
-        # Check for exit command
-        if user_query.lower() in ['exit', 'quit', 'stop', 'goodbye', 'bye']:
-            farewell = assistant.generate_response('farewell', intents)
-            print(f'ASSISTANT: {farewell}')
-            if not DEBUG:
-                tts.generate_audio(farewell)
-            conversation_active = False
-            continue
-
-        # 1. Start with checking which info are we still missing
-        missing_info = conversation_manager.check_missing_info()
-        print(f'MISSING: {missing_info}')
-
-        # 2. If missing info, ask the questions
-        if missing_info:
-            next_question = missing_info[0]
-            question = assistant.generate_response(next_question, intents)
-            print(f'ASSISTANT: {question}')
-            if not DEBUG:
-                tts.generate_audio(question)
-
-
         try:
+            # User input
+            if DEBUG:
+                user_query = input('User: ')
+            else:
+                print('Listening')
+                user_query = stt.record_audio()
+                print(f'USER: {user_query}')
+
+
+            # Extracting information from user's input
             intent, extracted_info = assistant.recognize_intent(user_query, intents_categories)
-            entities = assistant.recognize_entity(user_query)
+            print(f'Extracted info: {extracted_info}')
 
             # Update dialog manager with all extra info from the input
             conversation_manager.extract_info(extracted_info)
+
+            # Check missing info and ask
             missing_info = conversation_manager.check_missing_info()
+            print(f'MISSING INFO: {missing_info}')
 
-            if not missing_info and not conversation_manager.recommended_restaurant:
-                recommended_restaurant = recommend_restaurant({
-                    "dietary": conversation_manager.dietary_preferences,
-                    "cuisine": conversation_manager.culinary_preferences,
-                    "party_size": conversation_manager.party_size,
-                    "booking_time": conversation_manager.booking_date_time
-                })
-
-                conversation_manager.recommended_restaurant = recommended_restaurant
-
-                recommendation_response = assistant.generate_response("provide_recommendation", intents)
-                response = conversation_manager.fill_template(recommendation_response)
-
-            elif intent == "booking_confirmation" and conversation_manager.recommended_restaurant:
-                # Confirming the booking
-                confirmation_response = assistant.generate_response("booking_confirmation", intents)
-                response = conversation_manager.fill_template(confirmation_response)
-
-            elif intent == "confirm_details":
-                # Confirm the information we have
-                confirm_response = assistant.generate_response("confirm_details", intents)
-                response = conversation_manager.fill_template(confirm_response)
-
+            if missing_info:
+                response = assistant.generate_response(missing_info[0], intents)
+                if DEBUG:
+                    print(f'ASSISTANT: {response}')
+                else:
+                    tts.generate_audio(response)
             else:
-                # Regular response based on intent
-                response = assistant.generate_response(intent, intents)
-                response = conversation_manager.fill_template(response)
-
-            print(f"ASSISTANT: {response}")
-            if not DEBUG:
-                tts.generate_audio(response)
+                print('I believe I have all information now')
+                conversation_active = False
 
         except Exception as e:
-            # Error handling
-            print(f'ERROR: {e}')
+            print(f'ERROR: {e}, {type(e)}')
             fallback_response = assistant.generate_response('fallback', intents)
-            print(f'ASSISTANT: {fallback_response}')
-            if not DEBUG:
+
+            if DEBUG:
+                print(f'ASSISTANT: {fallback_response}')
+            else:
                 tts.generate_audio(fallback_response)
 
-        break
+    booking_confirmation = f"""
+    Time of booking: {conversation_manager.booking_date_time},
+    Booking in the name of {conversation_manager.user_name},
+    Preferred cuisine: {conversation_manager.culinary_preferences},
+    Dietary: {conversation_manager.dietary_preferences},
+    Party size: {conversation_manager.party_size},
+    I will look for the restaurants in the area of: {conversation_manager.booking_location}.
+    
+    Can you please confirm if the details are correct?
+    """
+    if DEBUG:
+        print(booking_confirmation)
+    else:
+        tts.generate_audio(booking_confirmation)
 
 
 if __name__ == '__main__':
