@@ -1,0 +1,89 @@
+greetings:
+  responses:
+    - "Hello, I'm here to help you find a perfect culinary match!"
+    - "Hi there! I'm your restaurant booking assistant. How can I help today?"
+    - "Welcome! I'm ready to help you discover and book fantastic restaurants."
+
+ask_name:
+  responses:
+    - "What's your name so I can personalize your restaurant recommendations?"
+    - "I'd like to address you properly. Could you tell me your name?"
+    - "To get started, may I know your name?"
+
+get_dietary_preferences:
+  responses:
+    - "Do you have any dietary preferences or restrictions I should know about? For example, vegetarian, vegan, or gluten-free options?"
+    - "Are there any specific dietary restrictions I should consider for your restaurant recommendation?"
+    - "To help find the perfect restaurant, do you follow any particular diet like vegetarian, vegan, or have any food allergies?"
+
+get_cuisine_preferences:
+  responses:
+    - "What type of cuisine are you in the mood for today? Italian, Japanese, Indian, or something else?"
+    - "Which cuisine would you prefer for your meal? I can suggest options from various culinary traditions."
+    - "Do you have a preference for any particular cuisine? French, Mexican, Chinese, or perhaps something local?"
+
+get_party_size:
+  responses:
+    - "How many people will be joining you for this meal?"
+    - "Could you tell me the size of your party for this reservation?"
+    - "How many guests should I include in the booking?"
+
+get_date_time:
+  responses:
+    - "When would you like to visit the restaurant? Please let me know the date and time."
+    - "What day and time are you planning to dine?"
+    - "When are you looking to book your table? Please specify the date and preferred time."
+
+past_bookings_inquiry:
+  responses:
+    - "Have you visited any restaurants recently that you particularly enjoyed?"
+    - "Based on your past dining experiences, are there any restaurants you'd like to revisit or avoid?"
+    - "Could you share any recent restaurant experiences to help me understand your preferences better?"
+
+confirm_details:
+  responses:
+    - "Let me confirm your details: You're looking for a {cuisine} restaurant with {dietary} options for {party_size} people on {date_time}. Is that correct?"
+    - "Just to make sure I have everything right: {party_size} people, {cuisine} food with {dietary} options on {date_time}. Does that sound right?"
+    - "I've noted down: {cuisine} cuisine, {dietary} dietary needs, {party_size} guests, and {date_time}. Should I proceed with these details?"
+
+provide_recommendation:
+  responses:
+    - "Based on your preferences, I recommend {restaurant_name}. They offer excellent {cuisine} cuisine with {dietary} options. Would you like to book a table there?"
+    - "I think you'll love {restaurant_name}! Their {cuisine} menu has great options for {dietary} diets, and they have availability for your party size at your requested time. Shall I make a reservation?"
+    - "{restaurant_name} would be perfect for you! They specialize in {cuisine} food, accommodate {dietary} diets, and have received great reviews. Would you like more details or should I book it?"
+
+booking_confirmation:
+  responses:
+    - "Great! I've booked a table for {party_size} at {restaurant_name} on {date_time}. You'll receive a confirmation shortly. Is there anything else you need?"
+    - "Your reservation is confirmed! {party_size} people at {restaurant_name}, {date_time}. A confirmation has been sent. Can I help with anything else?"
+    - "All set! Your table for {party_size} is booked at {restaurant_name} for {date_time}. Enjoy your meal! Is there anything else I can assist with?"
+
+location_inquiry:
+  responses:
+    - "Do you have a preferred area or neighborhood for the restaurant?"
+    - "Is there a specific location that would be convenient for you?"
+    - "Where would you like the restaurant to be located? Downtown, uptown, or a specific neighborhood?"
+
+price_range_inquiry:
+  responses:
+    - "What price range are you comfortable with for this meal? Budget-friendly, mid-range, or high-end?"
+    - "Could you indicate your preferred price point? Economy, moderate, or premium?"
+    - "Are you looking for an affordable option, something mid-range, or a fine dining experience?"
+
+parking_inquiry:
+  responses:
+    - "Do you need a restaurant with parking facilities?"
+    - "Is having available parking important for your restaurant choice?"
+    - "Would you prefer a restaurant that offers on-site parking?"
+
+fallback:
+  responses:
+    - "I'm sorry, I didn't quite catch that. Could you please rephrase your request?"
+    - "I apologize, but I'm not sure I understood correctly. Could you say that again differently?"
+    - "I'm having trouble understanding. Could you please provide more details or try different wording?"
+
+farewell:
+  responses:
+    - "Thank you for using our restaurant booking service! Enjoy your meal and have a wonderful day."
+    - "It was a pleasure helping you today. Enjoy your dining experience!"
+    - "I hope you have a delightful meal! Feel free to return whenever you need restaurant recommendations or bookings."
