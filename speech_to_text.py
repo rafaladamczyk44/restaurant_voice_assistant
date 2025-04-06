@@ -7,6 +7,8 @@ from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 class STT:
     def __init__(self,  model_id="openai/whisper-large-v3-turbo"):
         """
+        https://huggingface.co/openai/whisper-large-v3-turbo
+        :param model_id: Whisper model, default: openai/whisper-large-v3-turbo
         """
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model_id = model_id
@@ -36,6 +38,7 @@ class STT:
     def record_audio(self, max_record_duration=10):
         """
         Method for dynamic audio recording - waits for a signal to break silence threshold and then records for the max of 5 sec silence
+        https://python-sounddevice.readthedocs.io/en/0.5.1/api/streams.html#sounddevice.InputStream
         :param max_record_duration: Max record duration in seconds, default 10
         :return: Models' transcript of the recorded audio
         """
