@@ -49,3 +49,13 @@ class ConversationManager:
         if not self.booking_location:
             missing_info.append("get_location")
         return missing_info
+
+    def return_details(self):
+        return f"""
+            Time of booking: {self.booking_date_time},
+            Booking in the name of {self.user_name},
+            Preferred cuisine: {self.culinary_preferences},
+            Dietary: {self.dietary_preferences},
+            Party size: {self.party_size},
+            Location: {self.booking_location}.
+        """

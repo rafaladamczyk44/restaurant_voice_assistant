@@ -16,6 +16,8 @@ class TTS:
         :param voice: Voice chosen to read the query, default 'ash'
         :return: Generated audio stream
         """
+        assert text is not None, 'Text to generate must be provided'
+
         p = pyaudio.PyAudio()
 
         stream = p.open(format=8, channels=1, rate=24_000, output=True)
