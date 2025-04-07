@@ -1,6 +1,4 @@
-import os
 import yaml
-import random
 
 from speech_to_text import STT
 from text_to_speech import TTS
@@ -8,41 +6,17 @@ from assistant_nlu import Assistant
 from converstaion_manager import ConversationManager
 
 
-def recommend_restaurant(user_preferences):
-    """
-    Placeholder for the actual recommendation system
-    :param user_preferences:
-    :return:
-    """
-    placeholder_restaurants = [
-        {"name": "The Green Garden", "cuisine": "Mediterranean", "dietary": "Vegetarian"},
-        {"name": "Spice Route", "cuisine": "Indian", "dietary": "Vegan options"},
-        {"name": "Pasta Paradise", "cuisine": "Italian", "dietary": "Gluten-free options"}
-    ]
-    return random.choice(placeholder_restaurants)
-
-# For testing so I dont have to speak everytime
-DEBUG = True
-
-# Initialize all my classes
-stt = STT()
-tts = TTS()
-assistant = Assistant()
-conversation_manager = ConversationManager()
-
-with open('intents.yaml', 'r') as file:
-    intents = yaml.safe_load(file)
-
-intents_categories = list(intents.keys())
+def dialog_response(response):
+    if DEBUG:
+        print(f'ASSISTANT: {response}')
+    else:
+        tts.generate_audio(response)
 
 
 def main():
-
     # Greeting to the user opening the app
-    greetings_response = assistant.generate_response('greetings', intents)
-    print(f'ASSISTANT: {greetings_response}')
-    if not DEBUG:
-        tts.generate_audio(greetings_response)
+    greetings_response = assistant.generate_response('greetings')
+    dialog_response(greetings_response)
 
     conversation_active = True
 
@@ -57,52 +31,60 @@ def main():
                 user_query = stt.record_audio()
                 print(f'USER: {user_query}')
 
-
             # Extracting information from user's input
-            intent, extracted_info = assistant.recognize_intent(user_query, intents_categories)
-            print(f'Extracted info: {extracted_info}')
+            intent, extracted_info = assistant.recognize_intent(user_query)
 
-            # Update dialog manager with all extra info from the input
-            conversation_manager.extract_info(extracted_info)
-
-            # Check missing info and ask
-            missing_info = conversation_manager.check_missing_info()
-            print(f'MISSING INFO: {missing_info}')
-
-            if missing_info:
-                response = assistant.generate_response(missing_info[0], intents)
-                if DEBUG:
-                    print(f'ASSISTANT: {response}')
-                else:
-                    tts.generate_audio(response)
-            else:
-                print('I believe I have all information now')
+            if intent == 'farewell':
+                response = assistant.generate_response('farewell')
+                dialog_response(response)
                 conversation_active = False
+                break
+
+            if intent == 'fallback':
+                response = assistant.generate_response('fallback')
+                dialog_response(response)
+            elif intent == 'greetings':
+                response = assistant.generate_response('greetings')
+                dialog_response(response)
+            else:
+                # print(f'DEBUG Intent recognized: {intent}')
+                # print(f'DEBUG Extracted info: {extracted_info}')
+
+                # Update dialog manager with all extra info from the input
+                conversation_manager.extract_info(extracted_info)
+
+                # Check missing info and ask
+                missing_info = conversation_manager.check_missing_info()
+                print(f'DEBUG Missing info: {missing_info}')
+
+                if missing_info:
+                    response = assistant.generate_response(missing_info[0])
+                    dialog_response(response)
+                else:
+                    print('ASSISTANT: I believe I have all information now')
+                    print(conversation_manager.return_details())
+                    conversation_active = False
 
         except Exception as e:
-            print(f'ERROR: {e}, {type(e)}')
-            fallback_response = assistant.generate_response('fallback', intents)
-
-            if DEBUG:
-                print(f'ASSISTANT: {fallback_response}')
-            else:
-                tts.generate_audio(fallback_response)
-
-    booking_confirmation = f"""
-    Time of booking: {conversation_manager.booking_date_time},
-    Booking in the name of {conversation_manager.user_name},
-    Preferred cuisine: {conversation_manager.culinary_preferences},
-    Dietary: {conversation_manager.dietary_preferences},
-    Party size: {conversation_manager.party_size},
-    I will look for the restaurants in the area of: {conversation_manager.booking_location}.
-    
-    Can you please confirm if the details are correct?
-    """
-    if DEBUG:
-        print(booking_confirmation)
-    else:
-        tts.generate_audio(booking_confirmation)
+            print(f'ERROR:{type(e)}, {e}' )
+            response = f'ASSISTANT: I am sorry, there was a problem while processing your request. Please try again.'
+            dialog_response(response)
 
 
 if __name__ == '__main__':
+    # For testing so I don't have to speak everytime
+    DEBUG = True
+
+    with open('intents.yaml', 'r') as file:
+        intents = yaml.safe_load(file)
+
+    intents_categories = list(intents.keys())
+
+    # Initialize all my classes
+    stt = STT()
+    tts = TTS()
+    assistant = Assistant(intents=intents, intent_categories=intents_categories)
+    conversation_manager = ConversationManager()
+
+    # Initialize the app
     main()
