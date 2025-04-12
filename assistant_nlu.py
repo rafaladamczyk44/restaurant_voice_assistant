@@ -109,3 +109,39 @@ class Assistant:
 
         pool_of_responses = self.intents[intent]['responses']
         return pool_of_responses[random.randint(0, 2)]
+
+    def generate_restaurant_suggestion(self, restaurants_list:list, user_preferences:list):
+        assert restaurants_list, 'Empty restaurants_list provided'
+        assert user_preferences, 'Empty user_preferences provided'
+
+        prompt = f"""   
+        You are a helpful culinary advisor. Your goal is to select the best option based on the user input from the restaurant lists.
+        You will choose top three picks from a list based on:
+        - How close the recent review match the user input.
+        - Rating
+        For example: if the user requested vegan restaurant and you have to choose from 2 restaurants: 
+        - one with rating 4.8, where no one says anything about vegan options 
+        - the other restaurant with rating 4.7 but people say things like "great vegan options", "good for vegans"
+        You should choose the second restaurant.
+        
+        Restaurant list: {restaurants_list}
+        User preferences: {user_preferences}
+        
+        Respond with a JSON object containing:
+        - restaurant_name
+        - restaurant address
+        - rating
+        - summary of comparison between user needs and restaurant description (good for vegans, great Italian food, etc.)
+        
+        JSON Response:
+        """
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+
+        result = json.loads(response.choices[0].message.content)
+
+        return result['top_picks']
