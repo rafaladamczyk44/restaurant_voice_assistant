@@ -1,9 +1,83 @@
+import os
 import yaml
+import requests
 
 from speech_to_text import STT
 from text_to_speech import TTS
 from assistant_nlu import Assistant
 from converstaion_manager import ConversationManager
+
+GOOGLE_API_KEY = os.getenv('GOOGLE_KEY')
+
+def find_restaurants(diet, cuisine, city, area,  keywords=None) -> list:
+
+    query = f"{diet}, {cuisine} restaurants {area} {city}"
+
+    text_search_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+
+    params = {
+        "query": query,
+        "type": "restaurant",
+        "key": GOOGLE_API_KEY
+    }
+
+    response = requests.get(text_search_url, params=params)
+
+    if response.status_code != 200:
+        print("Error:", response.status_code, response.text)
+        return []
+
+    places = response.json().get("results", [])
+    places_sorted = sorted(places, key=lambda x: x.get('rating', 0), reverse=True)
+
+    details_url = "https://maps.googleapis.com/maps/api/place/details/json"
+
+    results = []
+
+    for place in places_sorted:
+        place_id = place["place_id"]
+
+        details_params = {
+            "place_id": place_id,
+            "fields": "name,rating,formatted_address,review",
+            "key": GOOGLE_API_KEY
+        }
+
+        details_response = requests.get(details_url, params=details_params)
+
+        if details_response.status_code != 200:
+            continue
+
+        details = details_response.json().get("result", {})
+        name = details.get("name")
+        address = details.get("formatted_address")
+        rating = details.get("rating")
+        reviews = details.get("reviews", [])
+
+        # Process reviews
+        review_texts = []
+        matched_keywords = []
+
+        for review in reviews[:5]:
+            text = review.get('text', '')
+            review_texts.append(text)
+
+            if keywords:
+                for keyword in keywords:
+                    if keyword.lower() in text.lower():
+                        matched_keywords.append(keyword)
+
+        restaurant_data = {
+            "name": name,
+            "address": address,
+            "rating": rating,
+            "recent_reviews": review_texts,
+            "matched_keywords": list(set(matched_keywords))  # avoid duplicates
+        }
+
+        results.append(restaurant_data)
+
+    return results
 
 
 def dialog_response(response):
@@ -33,6 +107,8 @@ def main():
 
             # Extracting information from user's input
             intent, extracted_info = assistant.recognize_intent(user_query)
+            conversation_manager.update_state(intent)
+            # print(conversation_manager.return_history())
 
             if intent == 'farewell':
                 response = assistant.generate_response('farewell')
@@ -47,9 +123,6 @@ def main():
                 response = assistant.generate_response('greetings')
                 dialog_response(response)
             else:
-                # print(f'DEBUG Intent recognized: {intent}')
-                # print(f'DEBUG Extracted info: {extracted_info}')
-
                 # Update dialog manager with all extra info from the input
                 conversation_manager.extract_info(extracted_info)
 
@@ -69,6 +142,30 @@ def main():
             print(f'ERROR:{type(e)}, {e}' )
             response = f'ASSISTANT: I am sorry, there was a problem while processing your request. Please try again.'
             dialog_response(response)
+
+
+    print('ASSISTANT: Please wait while I prepare the list of restaurants.')
+
+    # Get all user's details
+    details = conversation_manager.return_details()
+    user_preferences = [details['booking_location'], details['dietary_preferences'], details['culinary_preferences']]
+
+    # Create a query based on user's preferences
+    restaurants = find_restaurants(
+        diet=details['dietary_preferences'],
+        cuisine=details['booking_location'],
+        city='Warsaw',
+        area="Downtown",
+        keywords=["great vegan options", "many vegan dishes", "vegan friendly"]
+    )
+
+    suggestions = assistant.generate_restaurant_suggestion(restaurants, user_preferences)
+
+    for suggestion in suggestions:
+        print('Restaurant: ', suggestion['restaurant_name'])
+        print('Address: ', suggestion['restaurant_address'])
+        print('Rating: ', suggestion['rating'])
+        print('Summary: ', suggestion['summary'])
 
 
 if __name__ == '__main__':
