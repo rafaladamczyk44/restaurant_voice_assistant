@@ -107,8 +107,8 @@ def main():
 
             # Extracting information from user's input
             intent, extracted_info = assistant.recognize_intent(user_query)
-            conversation_manager.update_state(intent)
-            # print(conversation_manager.return_history())
+
+            conversation_manager.update_state(intent) # Move to next state
 
             if intent == 'farewell':
                 response = assistant.generate_response('farewell')
@@ -119,24 +119,43 @@ def main():
             if intent == 'fallback':
                 response = assistant.generate_response('fallback')
                 dialog_response(response)
-            elif intent == 'greetings':
+
+            if intent == 'greetings':
                 response = assistant.generate_response('greetings')
                 dialog_response(response)
-            else:
-                # Update dialog manager with all extra info from the input
-                conversation_manager.extract_info(extracted_info)
 
-                # Check missing info and ask
-                missing_info = conversation_manager.check_missing_info()
-                print(f'DEBUG Missing info: {missing_info}')
 
-                if missing_info:
-                    response = assistant.generate_response(missing_info[0])
+            # Update dialog manager with all extra info from the input
+            # conversation_manager.extract_info(extracted_info)
+            confirmation_prompt = conversation_manager.extract_info(extracted_info)
+            if confirmation_prompt:
+                dialog_response(confirmation_prompt)
+                continue
+
+            if conversation_manager.current_confirm_field:
+                yesses = ['yes', 'correct', 'yup', 'yeah', 'ok', 'right']
+                nopes = ['no', 'nope', 'wrong', 'incorrect']
+
+                user_input_to_check = user_query.lower().split()
+                confirm = any(word in user_input_to_check for word in yesses)
+                deny = any(word in user_input_to_check for word in nopes)
+
+                if confirm:
+                    response = conversation_manager.process_confirmation(True)
+                    # print(response)
                     dialog_response(response)
-                else:
-                    print('ASSISTANT: I believe I have all information now')
-                    print(conversation_manager.return_details())
-                    conversation_active = False
+
+            # Check missing info and ask
+            missing_info = conversation_manager.check_missing_info()
+            # print(f'DEBUG Missing info: {missing_info}')
+
+            if missing_info:
+                response = assistant.generate_response(missing_info[0])
+                dialog_response(response)
+            else:
+                print('ASSISTANT: I believe I have all information now')
+                print(conversation_manager.return_details())
+                conversation_active = False
 
         except Exception as e:
             print(f'ERROR:{type(e)}, {e}' )
