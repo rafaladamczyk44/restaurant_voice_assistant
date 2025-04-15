@@ -108,22 +108,7 @@ def main():
             # Extracting information from user's input
             intent, extracted_info = assistant.recognize_intent(user_query)
 
-            conversation_manager.update_state(intent) # Move to next state
-
-            if intent == 'farewell':
-                response = assistant.generate_response('farewell')
-                dialog_response(response)
-                conversation_active = False
-                break
-
-            if intent == 'fallback':
-                response = assistant.generate_response('fallback')
-                dialog_response(response)
-
-            if intent == 'greetings':
-                response = assistant.generate_response('greetings')
-                dialog_response(response)
-
+            conversation_manager.update_state(intent)  # Move to next state
 
             # Update dialog manager with all extra info from the input
             # conversation_manager.extract_info(extracted_info)
@@ -132,6 +117,7 @@ def main():
                 dialog_response(confirmation_prompt)
                 continue
 
+            # Check if we're in confirmation mode first
             if conversation_manager.current_confirm_field:
                 yesses = ['yes', 'correct', 'yup', 'yeah', 'ok', 'right']
                 nopes = ['no', 'nope', 'wrong', 'incorrect']
@@ -144,6 +130,36 @@ def main():
                     response = conversation_manager.process_confirmation(True)
                     # print(response)
                     dialog_response(response)
+
+                    # Add this: Immediately ask the next question after confirmation
+                    missing_info = conversation_manager.check_missing_info()
+                    if missing_info:
+                        next_question = assistant.generate_response(missing_info[0])
+                        dialog_response(next_question)
+                    else:
+                        print('ASSISTANT: I believe I have all information now')
+                        print(conversation_manager.return_details())
+                        conversation_active = False
+
+                    continue
+                elif deny:
+                    response = conversation_manager.process_confirmation(False)
+                    dialog_response(response)
+                    continue
+            # Handle intents only if not in confirmation mode
+            elif intent == 'farewell':
+                response = assistant.generate_response('farewell')
+                dialog_response(response)
+                conversation_active = False
+                break
+            elif intent == 'fallback':
+                response = assistant.generate_response('fallback')
+                dialog_response(response)
+                continue
+            elif intent == 'greetings':
+                response = assistant.generate_response('greetings')
+                dialog_response(response)
+                continue
 
             # Check missing info and ask
             missing_info = conversation_manager.check_missing_info()
@@ -158,10 +174,9 @@ def main():
                 conversation_active = False
 
         except Exception as e:
-            print(f'ERROR:{type(e)}, {e}' )
+            print(f'ERROR:{type(e)}, {e}')
             response = f'ASSISTANT: I am sorry, there was a problem while processing your request. Please try again.'
             dialog_response(response)
-
 
     print('ASSISTANT: Please wait while I prepare the list of restaurants.')
 
