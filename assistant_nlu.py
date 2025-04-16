@@ -14,10 +14,34 @@ class Assistant:
 
         self.last_question_type = None
 
+    def recognize_answer_type(self, query):
+        assert query is not None
+        prompt = f"""
+            Your task is to recognize if the sentence means "YES" or "NO".
+            For example:
+            "yes, sure", "yeah", "its correct" - it is "YES"
+            "no", "wrong", "no sorry" - it is "NO"
+            
+            If the processed query is a "YES", return True, if it is "NO", return False
+            
+            User query: {query}
+            
+            JSON response: 
+        """
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+
+        result = json.loads(response.choices[0].message.content)
+        return result['response']
+
     def recognize_intent(self, query: str, last_question_type=None):
         """
         Method to recognize the intent from user's input
         :param query: Transcript from audio
+        :param last_question_type: what was asked last
         :return: Recognized intent + Extracted extra info
         """
         assert query is not None, 'Empty query provided'
@@ -174,5 +198,15 @@ class Assistant:
         )
 
         result = json.loads(response.choices[0].message.content)
+        print(result)
 
-        return result['top_picks']
+        if result:
+            try:
+                result = result['top_picks']
+            except KeyError: # If only one restaurant is returned
+                print('Only one restaurant found')
+            finally:
+                return result
+        else:
+            print("SYSTEM: Couldn't find any restaurant")
+            return None
