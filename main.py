@@ -9,7 +9,13 @@ from converstaion_manager import ConversationManager
 
 GOOGLE_API_KEY = os.getenv('GOOGLE_KEY')
 
-def find_restaurants(diet, cuisine, city, area,  keywords=None) -> list:
+def find_restaurants(diet, cuisine, city, area) -> list:
+
+    if diet == "No specific dietary preferences":
+        diet = ""
+
+    if cuisine == "No specific cuisine preferences":
+        cuisine = ""
 
     query = f"{diet}, {cuisine} restaurants {area} {city}"
 
@@ -62,10 +68,6 @@ def find_restaurants(diet, cuisine, city, area,  keywords=None) -> list:
             text = review.get('text', '')
             review_texts.append(text)
 
-            if keywords:
-                for keyword in keywords:
-                    if keyword.lower() in text.lower():
-                        matched_keywords.append(keyword)
 
         restaurant_data = {
             "name": name,
@@ -83,6 +85,7 @@ def find_restaurants(diet, cuisine, city, area,  keywords=None) -> list:
 def dialog_response(response):
     if DEBUG:
         print(f'ASSISTANT: {response}')
+        # tts.generate_audio(response)
     else:
         tts.generate_audio(response)
 
@@ -105,13 +108,14 @@ def main():
                 user_query = stt.record_audio()
                 print(f'USER: {user_query}')
 
+            last_question = conversation_manager.last_question
+
             # Extracting information from user's input
-            intent, extracted_info = assistant.recognize_intent(user_query)
+            intent, extracted_info = assistant.recognize_intent(user_query, last_question)
 
             conversation_manager.update_state(intent)  # Move to next state
 
             # Update dialog manager with all extra info from the input
-            # conversation_manager.extract_info(extracted_info)
             confirmation_prompt = conversation_manager.extract_info(extracted_info)
             if confirmation_prompt:
                 dialog_response(confirmation_prompt)
@@ -146,6 +150,7 @@ def main():
                     response = conversation_manager.process_confirmation(False)
                     dialog_response(response)
                     continue
+
             # Handle intents only if not in confirmation mode
             elif intent == 'farewell':
                 response = assistant.generate_response('farewell')
@@ -167,6 +172,7 @@ def main():
 
             if missing_info:
                 response = assistant.generate_response(missing_info[0])
+                conversation_manager.last_question = missing_info[0]
                 dialog_response(response)
             else:
                 print('ASSISTANT: I believe I have all information now')
@@ -178,6 +184,7 @@ def main():
             response = f'ASSISTANT: I am sorry, there was a problem while processing your request. Please try again.'
             dialog_response(response)
 
+
     print('ASSISTANT: Please wait while I prepare the list of restaurants.')
 
     # Get all user's details
@@ -187,13 +194,13 @@ def main():
     # Create a query based on user's preferences
     restaurants = find_restaurants(
         diet=details['dietary_preferences'],
-        cuisine=details['booking_location'],
+        cuisine=details['culinary_preferences'],
         city='Warsaw',
-        area="Downtown",
-        keywords=["great vegan options", "many vegan dishes", "vegan friendly"]
+        area=details['booking_location'],
     )
 
     suggestions = assistant.generate_restaurant_suggestion(restaurants, user_preferences)
+
 
     for suggestion in suggestions:
         print('Restaurant: ', suggestion['restaurant_name'])

@@ -12,7 +12,9 @@ class Assistant:
         self.intents = intents
         self.intent_categories = intent_categories
 
-    def recognize_intent(self, query: str):
+        self.last_question_type = None
+
+    def recognize_intent(self, query: str, last_question_type=None):
         """
         Method to recognize the intent from user's input
         :param query: Transcript from audio
@@ -21,11 +23,32 @@ class Assistant:
         assert query is not None, 'Empty query provided'
         assert len(self.intent_categories) > 0, 'Intents list empty'
 
+        # Store the last question type for context
+        if last_question_type:
+            self.last_question_type = last_question_type
+
+        # Build context-aware instructions
+        context_instruction = ""
+        if self.last_question_type == "get_dietary_preferences":
+            context_instruction = """
+                    The last question asked to the user was about dietary preferences.
+                    If the user responds with just "No", "None", "Nope", "Not really", or any simple negative response, 
+                    interpret this as having NO dietary preferences and set "dietary_preferences" to "NO_PREFERENCE".
+                    """
+        elif self.last_question_type == "get_cuisine_preferences":
+            context_instruction = """
+                    The last question asked to the user was about cuisine preferences.
+                    If the user responds with just "No", "None", "Nope", "Not really", "Anything", or any simple negative response,
+                    interpret this as having NO cuisine preferences and set "culinary_preferences" to "NO_PREFERENCE".
+                    """
+        
         prompt = f"""
             You are an intent recognition system for a restaurant booking voice assistant.
             Based on the user's input, identify the most appropriate intent category from the following options:
             {', '.join(self.intent_categories)}
 
+            {context_instruction}
+             
             User input: "{query}"
 
             Respond with a JSON object containing:
@@ -33,8 +56,14 @@ class Assistant:
             2. "confidence": your confidence score (0-1)
             3. "extracted_info": a dictionary with any relevant information extracted from the input, with keys including:
                - "name": user's first name 
-               - "dietary_preferences": dietary preferences/restrictions if mentioned or None
-               - "culinary_preferences": cuisine preference if mentioned or None
+               - "dietary_preferences": dietary preferences/restrictions if mentioned or None. 
+               If the user explicitly states they have no preferences or restrictions (e.g., "no dietary restrictions", 
+               "I eat everything", "no preferences", etc.), set this to "NO_PREFERENCE". 
+               If not mentioned, set to empty string.
+               - "culinary_preferences": cuisine preference if mentioned or None. 
+               If the user explicitly states they have no cuisine preference (e.g., "any cuisine", "I like all food", 
+               "no preference", etc.), set this to "NO_PREFERENCE". 
+               If not mentioned, set to empty string.
                - "party_size": number of guests if mentioned - always a positive number
                - "booking_date_time": booking time/date if mentioned
                - "booking_location": preferred area of the restaurant
@@ -106,6 +135,8 @@ class Assistant:
         """
         assert intent in self.intents, 'Intent not in the list'
         assert len(self.intents) > 0, 'Intent list is empty'
+
+        self.last_question_type = intent
 
         pool_of_responses = self.intents[intent]['responses']
         return pool_of_responses[random.randint(0, 2)]
