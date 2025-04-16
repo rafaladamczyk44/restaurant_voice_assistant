@@ -9,7 +9,13 @@ from converstaion_manager import ConversationManager
 
 GOOGLE_API_KEY = os.getenv('GOOGLE_KEY')
 
-def find_restaurants(diet, cuisine, city, area,  keywords=None) -> list:
+def find_restaurants(diet, cuisine, city, area) -> list:
+
+    if diet == "No specific dietary preferences":
+        diet = ""
+
+    if cuisine == "No specific cuisine preferences":
+        cuisine = ""
 
     query = f"{diet}, {cuisine} restaurants {area} {city}"
 
@@ -62,10 +68,6 @@ def find_restaurants(diet, cuisine, city, area,  keywords=None) -> list:
             text = review.get('text', '')
             review_texts.append(text)
 
-            if keywords:
-                for keyword in keywords:
-                    if keyword.lower() in text.lower():
-                        matched_keywords.append(keyword)
 
         restaurant_data = {
             "name": name,
@@ -83,6 +85,7 @@ def find_restaurants(diet, cuisine, city, area,  keywords=None) -> list:
 def dialog_response(response):
     if DEBUG:
         print(f'ASSISTANT: {response}')
+        # tts.generate_audio(response)
     else:
         tts.generate_audio(response)
 
@@ -105,13 +108,14 @@ def main():
                 user_query = stt.record_audio()
                 print(f'USER: {user_query}')
 
+            last_question = conversation_manager.last_question
+
             # Extracting information from user's input
-            intent, extracted_info = assistant.recognize_intent(user_query)
+            intent, extracted_info = assistant.recognize_intent(user_query, last_question)
 
             conversation_manager.update_state(intent)  # Move to next state
 
             # Update dialog manager with all extra info from the input
-            # conversation_manager.extract_info(extracted_info)
             confirmation_prompt = conversation_manager.extract_info(extracted_info)
             if confirmation_prompt:
                 dialog_response(confirmation_prompt)
@@ -119,20 +123,20 @@ def main():
 
             # Check if we're in confirmation mode first
             if conversation_manager.current_confirm_field:
-                yesses = ['yes', 'correct', 'yup', 'yeah', 'ok', 'right']
-                nopes = ['no', 'nope', 'wrong', 'incorrect']
+                # yesses = ['yes', 'correct', 'yup', 'yeah', 'ok', 'right']
+                # nopes = ['no', 'nope', 'wrong', 'incorrect']
+                # user_input_to_check = user_query.lower().split()
+                # confirm = any(word in user_input_to_check for word in yesses)
+                # deny = any(word in user_input_to_check for word in nopes)
 
-                user_input_to_check = user_query.lower().split()
-                confirm = any(word in user_input_to_check for word in yesses)
-                deny = any(word in user_input_to_check for word in nopes)
+                confirmed = assistant.recognize_answer_type(user_query)
 
-                if confirm:
+                if confirmed: # If recognized as confirmatio
                     response = conversation_manager.process_confirmation(True)
                     # print(response)
                     dialog_response(response)
-
-                    # Add this: Immediately ask the next question after confirmation
                     missing_info = conversation_manager.check_missing_info()
+
                     if missing_info:
                         next_question = assistant.generate_response(missing_info[0])
                         dialog_response(next_question)
@@ -140,12 +144,13 @@ def main():
                         print('ASSISTANT: I believe I have all information now')
                         print(conversation_manager.return_details())
                         conversation_active = False
-
                     continue
-                elif deny:
+
+                else: # if user said "no"
                     response = conversation_manager.process_confirmation(False)
                     dialog_response(response)
                     continue
+
             # Handle intents only if not in confirmation mode
             elif intent == 'farewell':
                 response = assistant.generate_response('farewell')
@@ -167,6 +172,7 @@ def main():
 
             if missing_info:
                 response = assistant.generate_response(missing_info[0])
+                conversation_manager.last_question = missing_info[0]
                 dialog_response(response)
             else:
                 print('ASSISTANT: I believe I have all information now')
@@ -178,6 +184,7 @@ def main():
             response = f'ASSISTANT: I am sorry, there was a problem while processing your request. Please try again.'
             dialog_response(response)
 
+
     print('ASSISTANT: Please wait while I prepare the list of restaurants.')
 
     # Get all user's details
@@ -187,19 +194,66 @@ def main():
     # Create a query based on user's preferences
     restaurants = find_restaurants(
         diet=details['dietary_preferences'],
-        cuisine=details['booking_location'],
+        cuisine=details['culinary_preferences'],
         city='Warsaw',
-        area="Downtown",
-        keywords=["great vegan options", "many vegan dishes", "vegan friendly"]
+        area=details['booking_location'],
     )
 
     suggestions = assistant.generate_restaurant_suggestion(restaurants, user_preferences)
 
-    for suggestion in suggestions:
-        print('Restaurant: ', suggestion['restaurant_name'])
-        print('Address: ', suggestion['restaurant_address'])
-        print('Rating: ', suggestion['rating'])
-        print('Summary: ', suggestion['summary'])
+    if not suggestions:
+        print('ASSISTANT: Sorry, I did not find any suggestions.')
+        return
+
+    for idx, suggestion in enumerate(suggestions):
+
+        restaurant_suggestion = f"""
+        Based on your preferences, I would like to suggest a booking in {not suggestion['restaurant_name']}.
+        It's a {suggestion['culinary_preferences']} restaurant with a  {suggestion['rating']}, located on {suggestion['restaurant_address']}
+        Let me quickly summarize the reviews for you:
+        {suggestion['summary']}
+        """
+
+        dialog_response(restaurant_suggestion)
+
+        if DEBUG:
+            user_response = input('User (yes/no): ')
+        else:
+            print('Listening for confirmation...')
+            user_response = stt.record_audio()
+            print(f'USER: {user_response}')
+
+        # Check if user confirms this suggestion
+        # yesses = ['yes', 'yeah', 'sure', 'ok', 'okay', 'book it', 'sounds good', 'perfect']
+        # nopes = ['no', 'nope', 'next', 'another', 'different', 'something else', 'pass']
+
+        confirmed = assistant.recognize_answer_type(user_response)
+
+        if confirmed:
+            # User confirmed this suggestion, complete the booking
+            booking_confirmation = f"Great! I've booked a table for {details['party_size']} at {suggestion['restaurant_name']} "
+            booking_confirmation += f"for {details['booking_date_time']}. You'll receive a confirmation shortly. "
+            booking_confirmation += "Thank you for using our restaurant booking service!"
+
+            dialog_response(booking_confirmation)
+            return  # end here
+
+        else:
+            # User rejected this suggestion
+            if idx < len(suggestions) - 1:
+                dialog_response("Let me suggest another restaurant for you.")
+            else:
+                # This was the last suggestion
+                dialog_response(
+                    "I'm sorry, I've run out of suggestions that match your preferences. Would you like to try with different criteria?")
+                return
+
+
+    # for suggestion in suggestions:
+    #     print('Restaurant: ', suggestion['restaurant_name'])
+    #     print('Address: ', suggestion['restaurant_address'])
+    #     print('Rating: ', suggestion['rating'])
+    #     print('Summary: ', suggestion['summary'])
 
 
 if __name__ == '__main__':
@@ -216,6 +270,17 @@ if __name__ == '__main__':
     tts = TTS()
     assistant = Assistant(intents=intents, intent_categories=intents_categories)
     conversation_manager = ConversationManager()
+
+
+    # user_preferences = ['Wa', 'Vegan', 'Asian']
+    # restaurants = find_restaurants(
+    #     diet=' ',
+    #     cuisine=' ',
+    #     city=' ',
+    #     area=' ',
+    # )
+    # suggestions = assistant.generate_restaurant_suggestion(restaurants, user_preferences)
+    # print(suggestions)
 
     # Initialize the app
     main()

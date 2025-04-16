@@ -17,6 +17,9 @@ class ConversationManager:
         # Here Ill keep track of things user confirmed
         self.confirmed_fields = set()
 
+        # No preference fields
+        self.no_preference_fields = set()
+
         # keep track of what Im asking user
         self.current_confirm_field = None
 
@@ -44,13 +47,23 @@ class ConversationManager:
             self.user_name = extracted_info['name']
             newly_added.append('name')
 
-        if 'dietary_preferences' in extracted_info and extracted_info['dietary_preferences']:
-            self.dietary_preferences = extracted_info['dietary_preferences']
-            newly_added.append('dietary_preferences')
+        if 'dietary_preferences' in extracted_info:
+            if extracted_info['dietary_preferences'] == "NO_PREFERENCE":
+                self.dietary_preferences = "No specific dietary preferences"
+                self.no_preference_fields.add('dietary_preferences')
+                newly_added.append('dietary_preferences')
+            elif extracted_info['dietary_preferences']:
+                self.dietary_preferences = extracted_info['dietary_preferences']
+                newly_added.append('dietary_preferences')
 
-        if 'culinary_preferences' in extracted_info and extracted_info['culinary_preferences']:
-            self.culinary_preferences = extracted_info['culinary_preferences']
-            newly_added.append('culinary_preferences')
+        if 'culinary_preferences' in extracted_info:
+            if extracted_info['culinary_preferences'] == "NO_PREFERENCE":
+                self.culinary_preferences = "No specific cuisine preferences"
+                self.no_preference_fields.add('culinary_preferences')
+                newly_added.append('culinary_preferences')
+            elif extracted_info['culinary_preferences']:
+                self.culinary_preferences = extracted_info['culinary_preferences']
+                newly_added.append('culinary_preferences')
 
         if 'party_size' in extracted_info and extracted_info['party_size']:
             self.party_size = extracted_info['party_size']
@@ -114,6 +127,9 @@ class ConversationManager:
         else:
             self.current_confirm_field = None
             setattr(self, field, None)
+            # If in no preference, remove
+            if field in self.no_preference_fields:
+                self.no_preference_fields.remove(field)
             return f'Would you kindly provde your {self.current_confirm_field} again, please?'
 
     def check_missing_info(self) -> list:
@@ -124,18 +140,20 @@ class ConversationManager:
         missing_info = []
         if not self.user_name:
             missing_info.append("ask_name")
-        if not self.dietary_preferences:
-            # TODO: Allow for none
+        if not self.dietary_preferences and 'dietary_preferences' not in self.no_preference_fields:
             missing_info.append("get_dietary_preferences")
-        if not self.culinary_preferences:
+        if not self.culinary_preferences and 'culinary_preferences' not in self.no_preference_fields:
             missing_info.append("get_cuisine_preferences")
         if not self.party_size:
-            # TODO: get the number restrictions (0 to 9?)
             missing_info.append("get_party_size")
         if not self.booking_date_time:
             missing_info.append("get_date_time")
         if not self.booking_location:
             missing_info.append("get_location")
+
+        if missing_info:
+            self.last_question = missing_info[0]
+
         return missing_info
 
     def return_history(self) -> list:
