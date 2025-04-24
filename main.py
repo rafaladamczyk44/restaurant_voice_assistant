@@ -1,6 +1,7 @@
 import os
 import yaml
 import requests
+import argparse
 
 from speech_to_text import STT
 from text_to_speech import TTS
@@ -8,6 +9,14 @@ from assistant_nlu import Assistant
 from converstaion_manager import ConversationManager
 
 GOOGLE_API_KEY = os.getenv('GOOGLE_KEY')
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Voice Assistant for Restaurant Booking')
+    parser.add_argument('--no-debug', dest='debug', action='store_false',
+                        help='Disable debug mode (debug is enabled by default)')
+
+    parser.set_defaults(debug=True)
+    return parser.parse_args()
 
 def find_restaurants(query) -> list:
 
@@ -269,7 +278,11 @@ def main():
 
 if __name__ == '__main__':
     # For testing so I don't have to speak everytime
-    DEBUG = True
+    # DEBUG = True
+
+    args = parse_args()
+    DEBUG = args.debug
+
 
     with open('intents.yaml', 'r') as file:
         intents = yaml.safe_load(file)
@@ -283,24 +296,15 @@ if __name__ == '__main__':
     conversation_manager = ConversationManager()
 
 
-    # user_preferences = ['Wa', 'Vegan', 'Asian']
-    # restaurants = find_restaurants(
-    #     diet=' ',
-    #     cuisine=' ',
-    #     city=' ',
-    #     area=' ',
-    # )
-    # suggestions = assistant.generate_restaurant_suggestion(restaurants, user_preferences)
-    # print(suggestions)
-    deets = {
-            'user_name': 'Rafal',
-            'booking_time': 'Today',
-            'booking_location': 'Warsaw Center',
-            'party_size': 4,
-            'dietary_preferences': 'None',
-            'culinary_preferences': 'Italian',
-        }
-    assistant.generate_api_query(deets)
+    # deets = {
+    #         'user_name': 'Rafal',
+    #         'booking_time': 'Today',
+    #         'booking_location': 'Warsaw Center',
+    #         'party_size': 4,
+    #         'dietary_preferences': 'None',
+    #         'culinary_preferences': 'Italian',
+    #     }
+    # assistant.generate_api_query(deets)
 
     # Initialize the app
     main()
