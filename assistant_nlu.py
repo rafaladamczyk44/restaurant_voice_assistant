@@ -3,6 +3,7 @@ import random
 import json
 from openai import OpenAI
 
+# https://platform.openai.com/docs/api-reference/chat/create
 API_KEY = os.environ.get('OPENAI_KEY')
 
 class Assistant:
@@ -15,6 +16,11 @@ class Assistant:
         self.last_question_type = None
 
     def recognize_answer_type(self, query):
+        """
+        Recognize if what user said is confirmation (Yes) or (No)
+        :param query: User input
+        :return: Bool
+        """
         assert query is not None
         prompt = f"""
             Your task is to recognize if the sentence means "YES" or "NO".
@@ -33,8 +39,8 @@ class Assistant:
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"}
         )
-
         result = json.loads(response.choices[0].message.content)
+
         return result['response']
 
     def recognize_intent(self, query: str, last_question_type=None):
@@ -51,7 +57,7 @@ class Assistant:
         if last_question_type:
             self.last_question_type = last_question_type
 
-        # Build context-aware instructions
+        # context-aware prompt
         context_instruction = ""
         if self.last_question_type == "get_dietary_preferences":
             context_instruction = """
@@ -108,48 +114,7 @@ class Assistant:
 
         response_clean = json.loads(response.choices[0].message.content)
 
-        return response_clean['intent'], response_clean['extracted_info']
-
-    def recognize_entity(self, query:str) -> list :
-        """
-        Function for recognizing named entities from user's input
-        :param query: Transcript from audio
-        :return: Entity, entity's type
-        """
-        assert query is not None, 'Empty query provided'
-
-        prompt = f"""
-        You are an entity recognition system for a restaurant booking voice assistant.
-        Based on the provided input, your goal is to identify all named entities.
-        The entities you need to look for are: name, city, city area, restaurant name
-        
-        User input: "{query}"
-        
-        Respond with a JSON object containing:
-        - "entities": a list of objects, where each object contains:
-            - "entity" - recognized entity
-            - "type" - type of entity
-            - "confidence" - your confidence score (0-1)
-        
-        Return only entities with a confidence over 0.85
-        JSON Response:
-        """
-
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-
-        response_clean = json.loads(response.choices[0].message.content)
-
-        # Check if 'entities' key exists in the response
-        if 'entities' in response_clean:
-            return response_clean['entities']
-        else:
-            print("Warning: 'entities' key not found in response. Return empty list.")
-            print(f"Response received: {response_clean}")
-            return []
+        return response_clean['intent'], response_clean['extracted_info'], response_clean['confidence']
 
     def generate_response(self, intent):
         """
@@ -164,6 +129,28 @@ class Assistant:
 
         pool_of_responses = self.intents[intent]['responses']
         return pool_of_responses[random.randint(0, 2)]
+
+    def generate_api_query(self, user_details):
+        prompt = f'''Your task is to preapre an API query based on user details.
+        User your language skills to extract data from a Python dictionary and prepare a robust Google search query.
+        For example, based on user details:
+            Vegan restaurant in the city Center Warsaw,
+            Best italian restaurant in the downtown, Warsaw,
+            Georgian restaurant for two in Warsaw
+            
+        User booking details: 
+        {user_details}
+        
+        Return a simple string.
+        Response:
+        '''
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "text"}
+        )
+        # print(response.choices[0].message.content)
+        return response.choices[0].message.content
 
     def generate_restaurant_suggestion(self, restaurants_list:list, user_preferences:list):
         assert restaurants_list, 'Empty restaurants_list provided'

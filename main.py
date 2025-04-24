@@ -9,15 +9,7 @@ from converstaion_manager import ConversationManager
 
 GOOGLE_API_KEY = os.getenv('GOOGLE_KEY')
 
-def find_restaurants(diet, cuisine, city, area) -> list:
-
-    if diet == "No specific dietary preferences":
-        diet = ""
-
-    if cuisine == "No specific cuisine preferences":
-        cuisine = ""
-
-    query = f"{diet}, {cuisine} restaurants {area} {city}"
+def find_restaurants(query) -> list:
 
     text_search_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
 
@@ -95,6 +87,8 @@ def main():
     greetings_response = assistant.generate_response('greetings')
     dialog_response(greetings_response)
 
+    # "global" varaibles
+    past_bookings = False
     conversation_active = True
 
     # MAIN dialog loop
@@ -108,14 +102,31 @@ def main():
                 user_query = stt.record_audio()
                 print(f'USER: {user_query}')
 
+            # Ask if first time using app
+            # If yes, ask if want to use the past recomendation
+                # If yes jump straigt to previous data
+            # If no continue
+            if not conversation_manager.first_time_user_confiramtion:
+                print('If this the first time you are using this application?')
+                first_time_reply = input('User: ')
+                if not assistant.recognize_answer_type(first_time_reply):
+                    conversation_manager.first_time_user_confiramtion = False
+                    print('Would you like to use your previous recommendation?')
+                    reply = input('User: ')
+                    if assistant.recognize_answer_type(reply):
+                        past_bookings = True
+                        conversation_active = False
+                else:
+                    conversation_manager.first_time_user_confiramtion = True
+
+            # keep track of the last asked question (for cuisine and diet)
             last_question = conversation_manager.last_question
 
             # Extracting information from user's input
-            intent, extracted_info = assistant.recognize_intent(user_query, last_question)
+            intent, extracted_info, confidence = assistant.recognize_intent(user_query, last_question)
 
-            conversation_manager.update_state(intent)  # Move to next state
-
-            # Update dialog manager with all extra info from the input
+            # We fill the slot and then pass them for confirmation
+            # extract_info -> confirm_field
             confirmation_prompt = conversation_manager.extract_info(extracted_info)
             if confirmation_prompt:
                 dialog_response(confirmation_prompt)
@@ -123,15 +134,9 @@ def main():
 
             # Check if we're in confirmation mode first
             if conversation_manager.current_confirm_field:
-                # yesses = ['yes', 'correct', 'yup', 'yeah', 'ok', 'right']
-                # nopes = ['no', 'nope', 'wrong', 'incorrect']
-                # user_input_to_check = user_query.lower().split()
-                # confirm = any(word in user_input_to_check for word in yesses)
-                # deny = any(word in user_input_to_check for word in nopes)
-
                 confirmed = assistant.recognize_answer_type(user_query)
 
-                if confirmed: # If recognized as confirmatio
+                if confirmed: # If recognized as confirmation
                     response = conversation_manager.process_confirmation(True)
                     # print(response)
                     dialog_response(response)
@@ -188,17 +193,23 @@ def main():
     print('ASSISTANT: Please wait while I prepare the list of restaurants.')
 
     # Get all user's details
-    details = conversation_manager.return_details()
-    user_preferences = [details['booking_location'], details['dietary_preferences'], details['culinary_preferences']]
+    details = {}
+    user_preferences = []
+
+    if not past_bookings:
+        details = conversation_manager.return_details()
+        user_preferences = [details['booking_location'], details['dietary_preferences'], details['culinary_preferences']]
+    else:
+        # TODO: Add part where we search in the past data
+        pass
+
+    # Based on user preferences, create query for Google search
+    api_query = assistant.generate_api_query(details)
 
     # Create a query based on user's preferences
-    restaurants = find_restaurants(
-        diet=details['dietary_preferences'],
-        cuisine=details['culinary_preferences'],
-        city='Warsaw',
-        area=details['booking_location'],
-    )
+    restaurants = find_restaurants(api_query)
 
+    # Based on the results prepare restaurant suggestions
     suggestions = assistant.generate_restaurant_suggestion(restaurants, user_preferences)
 
     if not suggestions:
@@ -281,6 +292,15 @@ if __name__ == '__main__':
     # )
     # suggestions = assistant.generate_restaurant_suggestion(restaurants, user_preferences)
     # print(suggestions)
+    deets = {
+            'user_name': 'Rafal',
+            'booking_time': 'Today',
+            'booking_location': 'Warsaw Center',
+            'party_size': 4,
+            'dietary_preferences': 'None',
+            'culinary_preferences': 'Italian',
+        }
+    assistant.generate_api_query(deets)
 
     # Initialize the app
     main()
