@@ -1,7 +1,11 @@
-
+import os
+import sqlite3
+import hashlib
+from datetime import datetime
 
 class ConversationManager:
     def __init__(self):
+        # User details
         self.user_name = None
         self.dietary_preferences = None
         self.culinary_preferences = None
@@ -9,32 +13,15 @@ class ConversationManager:
         self.booking_date_time = None
         self.booking_location = None
 
-        # For state tracking
-        self.current_state = 'greetings'
+        # Tracking last question for assistant nlu recognize_intent method (context about preferences)
         self.last_question = None
-        self.history = []
 
-        # Here Ill keep track of things user confirmed
-        self.confirmed_fields = set()
+        self.first_time_user_confiramtion = None
 
-        # No preference fields
-        self.no_preference_fields = set()
-
-        # keep track of what Im asking user
-        self.current_confirm_field = None
-
-    def update_state(self, new_state):
-        """Switch to new state, update the history"""
-        self.history.append((self.current_state, new_state))
-        self.current_state = new_state
-
-    def add_user_history(self, query):
-        self.history.append({'role': 'user',
-                             'query': query,})
-
-    def add_sys_history(self, query):
-        self.history.append({'role': 'system',
-                             'query': query,})
+        # Fields tracking
+        self.current_confirm_field = None  # current field
+        self.confirmed_fields = set() # already confirmed fields
+        self.no_preference_fields = set() # fields with No as preference, ex. diet
 
     def extract_info(self, extracted_info: dict):
         """
@@ -80,8 +67,6 @@ class ConversationManager:
         if newly_added and not self.current_confirm_field:
             # print(f'Newly added: {newly_added[0]}')
             return self.confirm_field(newly_added[0])
-        # else:
-        #     print('failed')
 
         return None
 
@@ -95,16 +80,12 @@ class ConversationManager:
         self.current_confirm_field = field
 
         if field == 'name':
-            # self.current_confirm_field = field
-            return f'To confirm - your name is {self.user_name}, correct?'
+            return f'To confirm - your name is  {self.user_name.title()}, correct?'
         if field == 'dietary_preferences':
-            # self.current_confirm_field = field
             return f'Your diet preferences are {self.dietary_preferences}, is that right?'
         if field == 'culinary_preferences':
-            # self.current_confirm_field = self.culinary_preferences
             return f'The cuisine you are hungry for today is {self.culinary_preferences}, is that right?'
         if field == 'party_size':
-            # self.current_confirm_field = self.party_size
             if self.party_size > 2:
                 return f'If I understood correctly, this will be a {self.party_size} people reservation?'
             if self.party_size == 2:
@@ -112,10 +93,8 @@ class ConversationManager:
             if self.party_size == 1:
                 return f'One person reservation, correct?'
         if field == 'booking_date_time':
-            # self.current_confirm_field = self.booking_date_time
             return f'Just to confirm, your reservation will be asked for {self.booking_date_time}'
         if field == 'booking_location':
-            # self.current_confirm_field = self.booking_location
             return f'Place you want to book is in {self.booking_location}, correct?'
 
     def process_confirmation(self, confirmation):
@@ -156,10 +135,6 @@ class ConversationManager:
 
         return missing_info
 
-    def return_history(self) -> list:
-        """Return full history of conversation intent based"""
-        return self.history
-
     def return_details(self) -> dict:
         """Return booking details"""
         return {
@@ -170,3 +145,52 @@ class ConversationManager:
             'dietary_preferences': self.dietary_preferences,
             'culinary_preferences': self.culinary_preferences,
         }
+
+    def save_user_data(self):
+        assert self.user_name is not None, 'SYSTEM: No user name'
+
+        data = self.return_details()
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Hashmap for user's name storing
+        hashed_name = hashlib.sha256(self.user_name.encode()).hexdigest()
+        data['user_name'] = hashed_name
+
+        # Creates user_data directory if doesnt exist
+        os.makedirs("user_data", exist_ok=True)
+
+        db_path = f"user_data/{timestamp}-{hashed_name}.sqlite"
+
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+
+            # Create table
+            cursor.execute('''
+                CREATE TABLE user_booking_data (
+                    user_name TEXT,
+                    dietary_preferences TEXT,
+                    culinary_preferences TEXT,
+                    party_size INTEGER,
+                    booking_date_time TEXT,
+                    booking_location TEXT
+                )
+                ''')
+
+            # Insert data
+            cursor.execute('''
+                    INSERT INTO user_booking_data VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (
+                data['user_name'],
+                data['booking_time'],
+                data['booking_location'],
+                data['party_size'],
+                data['dietary_preferences'],
+                data['culinary_preferences']
+            ))
+
+            conn.commit()
+            conn.close()
+            print(f"Data saved to {db_path}")
+        except Exception as e:
+            print(f"Error saving data: {e}")
