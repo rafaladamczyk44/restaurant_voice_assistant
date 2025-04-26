@@ -116,7 +116,7 @@ def main():
                 # If yes jump straigt to previous data
             # If no continue
             if not conversation_manager.first_time_user_confiramtion:
-                print('If this the first time you are using this application?')
+                print('Is this the first time you are using this application?')
                 first_time_reply = input('User: ')
                 if not assistant.recognize_answer_type(first_time_reply):
                     conversation_manager.first_time_user_confiramtion = False
@@ -156,8 +156,9 @@ def main():
                         dialog_response(next_question)
                     else:
                         print('ASSISTANT: I believe I have all information now')
-                        print(conversation_manager.return_details())
+                        # print(conversation_manager.return_details())
                         conversation_active = False
+                        conversation_manager.save_user_data()
                     continue
 
                 else: # if user said "no"
@@ -190,8 +191,9 @@ def main():
                 dialog_response(response)
             else:
                 print('ASSISTANT: I believe I have all information now')
-                print(conversation_manager.return_details())
+                # print(conversation_manager.return_details())
                 conversation_active = False
+                conversation_manager.save_user_data()
 
         except Exception as e:
             print(f'ERROR:{type(e)}, {e}')
@@ -221,17 +223,18 @@ def main():
     # Based on the results prepare restaurant suggestions
     suggestions = assistant.generate_restaurant_suggestion(restaurants, user_preferences)
 
+
     if not suggestions:
         print('ASSISTANT: Sorry, I did not find any suggestions.')
         return
 
     for idx, suggestion in enumerate(suggestions):
+        print(suggestion)
 
         restaurant_suggestion = f"""
-        Based on your preferences, I would like to suggest a booking in {not suggestion['restaurant_name']}.
-        It's a {suggestion['culinary_preferences']} restaurant with a  {suggestion['rating']}, located on {suggestion['restaurant_address']}
-        Let me quickly summarize the reviews for you:
-        {suggestion['summary']}
+        Based on your preferences, I would like to suggest a booking in {suggestion['restaurant_name']} - a restaurant wit {suggestion['rating']} rating.
+        The restaurant's address is {suggestion['address']}.
+        {suggestion['summary']}        
         """
 
         dialog_response(restaurant_suggestion)
@@ -268,13 +271,11 @@ def main():
                     "I'm sorry, I've run out of suggestions that match your preferences. Would you like to try with different criteria?")
                 return
 
-
     # for suggestion in suggestions:
     #     print('Restaurant: ', suggestion['restaurant_name'])
     #     print('Address: ', suggestion['restaurant_address'])
     #     print('Rating: ', suggestion['rating'])
     #     print('Summary: ', suggestion['summary'])
-
 
 if __name__ == '__main__':
     # For testing so I don't have to speak everytime
@@ -306,5 +307,7 @@ if __name__ == '__main__':
     #     }
     # assistant.generate_api_query(deets)
 
+
     # Initialize the app
+
     main()

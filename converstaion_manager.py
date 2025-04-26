@@ -1,4 +1,7 @@
-
+import os
+import sqlite3
+import hashlib
+from datetime import datetime
 
 class ConversationManager:
     def __init__(self):
@@ -77,7 +80,7 @@ class ConversationManager:
         self.current_confirm_field = field
 
         if field == 'name':
-            return f'To confirm - your name is {self.user_name}, correct?'
+            return f'To confirm - your name is  {self.user_name.title()}, correct?'
         if field == 'dietary_preferences':
             return f'Your diet preferences are {self.dietary_preferences}, is that right?'
         if field == 'culinary_preferences':
@@ -142,3 +145,52 @@ class ConversationManager:
             'dietary_preferences': self.dietary_preferences,
             'culinary_preferences': self.culinary_preferences,
         }
+
+    def save_user_data(self):
+        assert self.user_name is not None, 'SYSTEM: No user name'
+
+        data = self.return_details()
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Hashmap for user's name storing
+        hashed_name = hashlib.sha256(self.user_name.encode()).hexdigest()
+        data['user_name'] = hashed_name
+
+        # Creates user_data directory if doesnt exist
+        os.makedirs("user_data", exist_ok=True)
+
+        db_path = f"user_data/{timestamp}-{hashed_name}.sqlite"
+
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+
+            # Create table
+            cursor.execute('''
+                CREATE TABLE user_booking_data (
+                    user_name TEXT,
+                    dietary_preferences TEXT,
+                    culinary_preferences TEXT,
+                    party_size INTEGER,
+                    booking_date_time TEXT,
+                    booking_location TEXT
+                )
+                ''')
+
+            # Insert data
+            cursor.execute('''
+                    INSERT INTO user_booking_data VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (
+                data['user_name'],
+                data['booking_time'],
+                data['booking_location'],
+                data['party_size'],
+                data['dietary_preferences'],
+                data['culinary_preferences']
+            ))
+
+            conn.commit()
+            conn.close()
+            print(f"Data saved to {db_path}")
+        except Exception as e:
+            print(f"Error saving data: {e}")
