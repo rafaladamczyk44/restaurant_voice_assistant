@@ -12,7 +12,7 @@ A voice assistant that helps users find and book restaurants based on their pref
 
 1. Clone the repository:
 ```
-git clone https://github.com/yourusername/restaurant-booking-voice-assistant.git
+git clone https://github.com/rafaladamczyk44/restaurant-booking-voice-assistant.git
 cd restaurant-booking-voice-assistant
 ```
 
