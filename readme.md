@@ -19,7 +19,7 @@ cd restaurant-booking-voice-assistant
 2. Create and activate a virtual environment:
 ```
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+.venv\Scripts\activate
 ```
 
 3. Install the required packages:
