@@ -15,10 +15,11 @@ class Assistant:
 
         self.last_question_type = None
 
-    def recognize_answer_type(self, query):
+    def recognize_answer_type(self, query, max_retries=3):
         """
         Recognize if what user said is confirmation (Yes) or (No)
         :param query: User input
+        :param max_retries: Maximum number of retries of chat completion
         :return: Bool
         """
         assert query is not None
@@ -34,14 +35,24 @@ class Assistant:
             
             JSON response: 
         """
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-        result = json.loads(response.choices[0].message.content)
 
-        return result['response']
+        for attempt in range(max_retries):
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"}
+                )
+
+                result = json.loads(response.choices[0].message.content)
+                return result['response']
+
+            except (KeyError, json.JSONDecodeError) as e:
+                print(f'SYSTEM: Attempt {attempt + 1}/{max_retries} failed: {str(e)}')
+                if attempt == max_retries - 1:
+                    print('SYSTEM: All retry attempts failed')
+                    return None
+
 
     def recognize_intent(self, query: str, last_question_type=None):
         """
@@ -171,9 +182,11 @@ class Assistant:
         
         Respond with a JSON object containing:
         - restaurant_name
-        - restaurant address
+        - address
         - rating
         - summary of comparison between user needs and restaurant description (good for vegans, great Italian food, etc.)
+        
+        JSON object must have a header: 'top_picks'
         
         JSON Response:
         """
@@ -185,15 +198,13 @@ class Assistant:
         )
 
         result = json.loads(response.choices[0].message.content)
-        print(result)
+        print('RESTAURANT SUGGESTIONS', result)
 
         if result:
             try:
-                result = result['top_picks']
+                return result['top_picks']
             except KeyError: # If only one restaurant is returned
-                print('Only one restaurant found')
-            finally:
-                return result
+                return result[0]
         else:
             print("SYSTEM: Couldn't find any restaurant")
             return None
