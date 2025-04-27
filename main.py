@@ -18,6 +18,7 @@ def parse_args():
     parser.set_defaults(debug=True)
     return parser.parse_args()
 
+
 def find_restaurants(query) -> list:
 
     text_search_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
@@ -96,7 +97,7 @@ def main():
     greetings_response = assistant.generate_response('greetings')
     dialog_response(greetings_response)
 
-    # "global" varaibles
+    # "global" varaibles for the dialog
     past_bookings = False
     conversation_active = True
 
@@ -112,8 +113,8 @@ def main():
                 print(f'USER: {user_query}')
 
             # Ask if first time using app
-            # If yes, ask if want to use the past recomendation
-                # If yes jump straigt to previous data
+            # If yes, ask if want to use the past recommendation
+                # If yes jump straight to previous data
             # If no continue
             if not conversation_manager.first_time_user_confiramtion:
                 print('Is this the first time you are using this application?')
@@ -145,8 +146,12 @@ def main():
             if conversation_manager.current_confirm_field:
                 confirmed = assistant.recognize_answer_type(user_query)
 
-                if confirmed: # If recognized as confirmation
+                if confirmed: # If user said yes
                     response = conversation_manager.process_confirmation(True)
+
+                    # Add correct recognition
+                    conversation_manager.positive_responses += 1
+
                     # print(response)
                     dialog_response(response)
                     missing_info = conversation_manager.check_missing_info()
@@ -163,6 +168,10 @@ def main():
 
                 else: # if user said "no"
                     response = conversation_manager.process_confirmation(False)
+
+                    # Add wrong
+                    conversation_manager.negative_responses += 1
+
                     dialog_response(response)
                     continue
 
@@ -222,7 +231,6 @@ def main():
 
     # Based on the results prepare restaurant suggestions
     suggestions = assistant.generate_restaurant_suggestion(restaurants, user_preferences)
-
 
     if not suggestions:
         print('ASSISTANT: Sorry, I did not find any suggestions.')
