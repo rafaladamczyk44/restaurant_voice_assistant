@@ -18,6 +18,7 @@ def parse_args():
     parser.set_defaults(debug=True)
     return parser.parse_args()
 
+
 def find_restaurants(query) -> list:
 
     text_search_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
@@ -86,7 +87,6 @@ def find_restaurants(query) -> list:
 def dialog_response(response):
     if DEBUG:
         print(f'ASSISTANT: {response}')
-        # tts.generate_audio(response)
     else:
         tts.generate_audio(response)
 
@@ -96,7 +96,7 @@ def main():
     greetings_response = assistant.generate_response('greetings')
     dialog_response(greetings_response)
 
-    # "global" varaibles
+    # "global" varaibles for the dialog
     past_bookings = False
     conversation_active = True
 
@@ -107,21 +107,32 @@ def main():
             if DEBUG:
                 user_query = input('User: ')
             else:
-                print('Listening')
+                print('Listening for user input...')
                 user_query = stt.record_audio()
                 print(f'USER: {user_query}')
 
             # Ask if first time using app
-            # If yes, ask if want to use the past recomendation
-                # If yes jump straigt to previous data
+            # If yes, ask if want to use the past recommendation
+                # If yes jump straight to previous data
             # If no continue
             if not conversation_manager.first_time_user_confiramtion:
-                print('Is this the first time you are using this application?')
-                first_time_reply = input('User: ')
+                dialog_response('Is this the first time you are using this application?')
+
+                if DEBUG:
+                    first_time_reply = input('User: ')
+                else:
+                    first_time_reply = stt.record_audio()
+
                 if not assistant.recognize_answer_type(first_time_reply):
                     conversation_manager.first_time_user_confiramtion = False
-                    print('Would you like to use your previous recommendation?')
-                    reply = input('User: ')
+
+                    dialog_response('Would you like to use your previous recommendation?')
+
+                    if DEBUG:
+                        reply = input('User: ')
+                    else:
+                        reply = stt.record_audio()
+
                     if assistant.recognize_answer_type(reply):
                         past_bookings = True
                         conversation_active = False
@@ -145,8 +156,12 @@ def main():
             if conversation_manager.current_confirm_field:
                 confirmed = assistant.recognize_answer_type(user_query)
 
-                if confirmed: # If recognized as confirmation
+                if confirmed: # If user said yes
                     response = conversation_manager.process_confirmation(True)
+
+                    # Add correct recognition
+                    conversation_manager.positive_responses += 1
+
                     # print(response)
                     dialog_response(response)
                     missing_info = conversation_manager.check_missing_info()
@@ -163,6 +178,10 @@ def main():
 
                 else: # if user said "no"
                     response = conversation_manager.process_confirmation(False)
+
+                    # Add wrong
+                    conversation_manager.negative_responses += 1
+
                     dialog_response(response)
                     continue
 
@@ -201,7 +220,7 @@ def main():
             dialog_response(response)
 
 
-    print('ASSISTANT: Please wait while I prepare the list of restaurants.')
+    dialog_response('ASSISTANT: Please wait while I prepare the list of restaurants.')
 
     # Get all user's details
     details = {}
@@ -222,7 +241,6 @@ def main():
 
     # Based on the results prepare restaurant suggestions
     suggestions = assistant.generate_restaurant_suggestion(restaurants, user_preferences)
-
 
     if not suggestions:
         print('ASSISTANT: Sorry, I did not find any suggestions.')
@@ -284,6 +302,7 @@ if __name__ == '__main__':
     args = parse_args()
     DEBUG = args.debug
 
+    DEBUG = False
 
     with open('intents.yaml', 'r') as file:
         intents = yaml.safe_load(file)

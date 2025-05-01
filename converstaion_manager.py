@@ -23,6 +23,10 @@ class ConversationManager:
         self.confirmed_fields = set() # already confirmed fields
         self.no_preference_fields = set() # fields with No as preference, ex. diet
 
+        # For evaluation
+        self.positive_responses = 0
+        self.negative_responses = 0
+
     def extract_info(self, extracted_info: dict):
         """
         Extract information from extracted_info from user query
@@ -173,20 +177,22 @@ class ConversationManager:
                     culinary_preferences TEXT,
                     party_size INTEGER,
                     booking_date_time TEXT,
-                    booking_location TEXT
+                    booking_location TEXT,
+                    accuracy_evaluation FLOAT
                 )
                 ''')
 
             # Insert data
             cursor.execute('''
-                    INSERT INTO user_booking_data VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO user_booking_data VALUES (?, ?, ?, ?, ?, ?, ?)
                     ''', (
                 data['user_name'],
                 data['booking_time'],
                 data['booking_location'],
                 data['party_size'],
                 data['dietary_preferences'],
-                data['culinary_preferences']
+                data['culinary_preferences'],
+                self.return_evaluation_accuracy()
             ))
 
             conn.commit()
@@ -194,3 +200,13 @@ class ConversationManager:
             print(f"Data saved to {db_path}")
         except Exception as e:
             print(f"Error saving data: {e}")
+
+    def return_evaluation_accuracy(self):
+        """
+        Return assistant's accuracy (all correct / all responses)
+        :return: accuracy: float
+        """
+        if (self.positive_responses + self.negative_responses) == 0:
+            return None
+
+        return self.positive_responses / (self.positive_responses + self.negative_responses)
