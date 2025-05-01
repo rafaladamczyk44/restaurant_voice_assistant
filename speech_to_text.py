@@ -13,7 +13,7 @@ class STT:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model_id = model_id
         self.pipe = self._create_pipeline()
-        self.whisper_kwargs = {"language": "english"}
+        # self.whisper_kwargs = {"language": "english"}
 
     def _create_pipeline(self):
 
@@ -44,7 +44,7 @@ class STT:
         """
         block_size = 4000 # Number of frames => 0.25s audio
         sample_rate = 16000
-        silence_duration = 5.0
+        silence_duration = 0.5
         audio_buffer = []
         chunks_per_second = sample_rate // block_size
         silent_threshold_chunks = int(silence_duration * chunks_per_second)
@@ -117,7 +117,9 @@ class STT:
             audio_data = audio_data / np.max(np.abs(audio_data))
 
         print('Processing the audio...')
-        result = self.pipe(audio_data, self.whisper_kwargs)
+
+        result = self.pipe(audio_data)
 
         transcription = result["text"].strip()
         return transcription
+

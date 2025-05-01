@@ -87,7 +87,6 @@ def find_restaurants(query) -> list:
 def dialog_response(response):
     if DEBUG:
         print(f'ASSISTANT: {response}')
-        # tts.generate_audio(response)
     else:
         tts.generate_audio(response)
 
@@ -108,7 +107,7 @@ def main():
             if DEBUG:
                 user_query = input('User: ')
             else:
-                print('Listening')
+                print('Listening for user input...')
                 user_query = stt.record_audio()
                 print(f'USER: {user_query}')
 
@@ -117,12 +116,23 @@ def main():
                 # If yes jump straight to previous data
             # If no continue
             if not conversation_manager.first_time_user_confiramtion:
-                print('Is this the first time you are using this application?')
-                first_time_reply = input('User: ')
+                dialog_response('Is this the first time you are using this application?')
+
+                if DEBUG:
+                    first_time_reply = input('User: ')
+                else:
+                    first_time_reply = stt.record_audio()
+
                 if not assistant.recognize_answer_type(first_time_reply):
                     conversation_manager.first_time_user_confiramtion = False
-                    print('Would you like to use your previous recommendation?')
-                    reply = input('User: ')
+
+                    dialog_response('Would you like to use your previous recommendation?')
+
+                    if DEBUG:
+                        reply = input('User: ')
+                    else:
+                        reply = stt.record_audio()
+
                     if assistant.recognize_answer_type(reply):
                         past_bookings = True
                         conversation_active = False
@@ -210,7 +220,7 @@ def main():
             dialog_response(response)
 
 
-    print('ASSISTANT: Please wait while I prepare the list of restaurants.')
+    dialog_response('ASSISTANT: Please wait while I prepare the list of restaurants.')
 
     # Get all user's details
     details = {}
@@ -292,6 +302,7 @@ if __name__ == '__main__':
     args = parse_args()
     DEBUG = args.debug
 
+    DEBUG = False
 
     with open('intents.yaml', 'r') as file:
         intents = yaml.safe_load(file)
